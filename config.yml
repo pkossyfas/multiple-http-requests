@@ -1,0 +1,4 @@
+endpoint: http://httpbin.org/post
+Headers:
+  Content-Type: application/json
+  Connection: keep-alive
