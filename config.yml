@@ -1,3 +1,6 @@
+csvfile: sample.csv
+csvdelimiter: ;
+body: body.j2
 endpoint: http://httpbin.org/post
 Headers:
   Content-Type: application/json
