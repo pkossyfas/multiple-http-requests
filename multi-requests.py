@@ -33,7 +33,7 @@ def fetchData(file, dl):
             data.append(item)
     return data
 
-def fetchDict(data):
+def fetchDict(mydata):
     '''
         fetchDict transforms the given list to a dictionary with keys the first row of the list 
     '''
@@ -54,8 +54,7 @@ def loadYaml(ymlfile):
         return data
     except:
         print('No configuration file found. Command line arguments will be used (or the defaults).')
-        logging.info('No configuration file found. Command line arguments will be used (or the defaults).')
-        
+        logging.info('No configuration file found. Command line arguments will be used (or the defaults).')     
 
 def checkParameter(parameter1, parameter2):
     '''
@@ -66,11 +65,26 @@ def checkParameter(parameter1, parameter2):
     else:
         return parameter1
     
-# def postRequest(url, body, headers):
-#     '''
-#         postRequest performs a POST HTTP request
-#     '''
-#     return requests.post(url, data=body, headers=headers)
+def postRequests():
+    '''
+       postRequest performs the HTTP POST requests
+    '''
+    s = requests.Session()
+
+    for item in dataDict:
+        output = template.render(**dataDict[item])     
+        try:
+            res = s.post(url, data=output, headers=headers)
+            if res.status_code == 200:
+                print(res.text)
+                logging.info(res.text)
+            else:
+                print(res.text)
+                logging.error(res.text)
+        except:
+            print(requests.exceptions.RequestException)
+            logging.error(requests.exceptions.RequestException)
+
     
 if __name__ == '__main__':
     # initializing the logger, logfile will be created
@@ -90,7 +104,7 @@ if __name__ == '__main__':
     logging.info("Reading yaml file for parameters (url/headers etc.)...")
     data = loadYaml(ymlfile)
 
-    # reading parameters/input in variables either from configuration file (with priority) or from the command line arguments
+    ## reading parameters/input in variables either from configuration file (with priority) or from the command line arguments
     # endpoint
     try:
         url = checkParameter(data['endpoint'], parameters.url)
@@ -104,8 +118,7 @@ if __name__ == '__main__':
  
     if not url.startswith( 'http://' ):
         url =  'http://' + url
-    print(url)
-
+    
     # http body
     try:
         body = checkParameter(data['body'], parameters.body)
@@ -116,8 +129,7 @@ if __name__ == '__main__':
         print('Template body is missing.')
         logging.error('Template body is missing.')
         sys.exit(1)
-    print(body)
-
+    
     # csv file with variables
     try:
         csvfile = checkParameter(data['csvfile'], parameters.file)
@@ -128,39 +140,31 @@ if __name__ == '__main__':
         print('File .csv is missing.')
         logging.error('File .csv is missing.')
         sys.exit(1)
-    print(csvfile)
     
     # csv delimiter
     try:
         delim = checkParameter(data['csvdelimiter'], parameters.delimiter)
     except:
         delim = parameters.delimiter
-    print(delim)
-
+    
     # headers
     try:
         headers = checkParameter(data['Headers'], parameters.header)
     except:
         headers = parameters.headers
-    print(headers)
+    
+    # create a list with the data from the given .csv file
+    dataList = fetchData(csvfile, delim)
+    # create the dictionary
+    dataDict = fetchDict(dataList)
 
-    mydata = fetchData(csvfile, delim)
-
-    ll = fetchDict(mydata)
-
+    # open the template file
     file_loader = FileSystemLoader('.')
     env = Environment(loader=file_loader)
     template = env.get_template(body)
-
-    s = requests.Session()
-
-    for item in ll:
-        output = template.render(**ll[item])
-
-        
-        r = s.post(url, data=output, headers=headers) 
-        # r = postRequest(url, output, data['Headers'])
-        print(r.text)
+  
+    # call postRequests function to execute the http post calls in one session
+    postRequests()
 
     print("Finished at " + time.strftime("%c"))
     logging.info("Finished at " + time.strftime("%c"))
